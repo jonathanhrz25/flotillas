@@ -1,0 +1,57 @@
+body {
+  background-image: url('');
+  /* Ruta de la imagen de fondo */
+  color: rgb(248, 248, 248);
+  /* Color del texto */
+  background-size: cover;
+  /* Ajusta la imagen de fondo para cubrir todo el elemento */
+}
+
+.custom-button {
+  width: 150px;
+  height: 90px;
+  font-size: 60px;
+  font-family: "Latin Modern Roman";
+}
+
+/* Centra los iconos dentro de las celdas de la tabla */
+.icon-cell {
+  text-align: center; /* Centra horizontalmente el contenido */
+  vertical-align: middle; /* Centra verticalmente el contenido */
+  color: #081856; /* Cambia el color de los iconos a #081856 */
+}
+
+.show-more-btn {
+  color: blue;
+}
+
+
+/* Menu Inventario */
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Opcional: Alinea verticalmente el contenido */
+}
+
+.dropdown-menu {
+  width: 300px; /* Ajusta el ancho según tus necesidades */
+}
+
+/* Color Botones Principal */
+.btn-light {
+  color: white !important;
+  background-color: rgb(37, 36, 131) !important;
+  border-color: rgb(0, 0, 0) !important;
+}
+
+/* Color Botones Principal al pasar mouse */
+.btn-light:hover {
+  background-color: rgb(13, 218, 218) !important;
+  border-color: rgb(16, 13, 218) !important;
+  color: white !important;
+}
+
+.font-size-lg {
+  font-size: 40px; /* Cambia el tamaño de fuente según tus preferencias */
+}
+

@@ -1,0 +1,80 @@
+body {
+  background-image: url('');
+  /* Ruta de la imagen de fondo */
+  color: rgb(248, 248, 248);
+  /* Color del texto */
+  background-size: cover;
+  /* Ajusta la imagen de fondo para cubrir todo el elemento */
+}
+
+.custom-button {
+  background-color: #081856 !important;
+  color: white !important;
+  width: 150px;
+  height: 60px;
+  font-size: 20px;
+  font-family: "Latin Modern Roman";
+}
+
+
+/* General */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Rajdhani', sans-serif;
+  background: linear-gradient(135deg, #0057e7, #002e99);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+/* Input Forms*/
+input[type="text"],
+input[type="password"] {
+  outline: none;
+  padding: 20px;
+  display: block;
+  width: 300px;
+  border-radius: 3px;
+  border: 1px solid #eee;
+  margin: 20px auto;
+}
+
+input[type="submit"] {
+  padding: 10px;
+  color: #fff;
+  background: #0098cb;
+  width: 320px;
+  margin: 20px auto;
+  margin-top: 0;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+input[type="submit"]:hover {
+  background-color: #00b8eb;
+}
+
+
+/* Registrar */
+body {
+  font-family: 'Roboto', sans-serif;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container {
+  text-align: center;
+  padding: 10px;
+  /* Agrega espacio de relleno para separar el contenido del borde del contenedor */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 70vh;
+}
