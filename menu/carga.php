@@ -367,8 +367,9 @@ while ($row = $result->fetch_assoc()) {
 
 
 <!-- Google Maps -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC31Srrlxn7jFkf1QCoCAj-Swpb4mbJRv0" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=API_KEY" async defer></script>
 
 
 <!-- ✅ JS principal -->
+
 <script src="/flotillas/js/carga.js"></script>
