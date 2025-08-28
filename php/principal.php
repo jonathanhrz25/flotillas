@@ -272,7 +272,7 @@ if (!isset($_SESSION['user_id'])) {
                                             if (!existingScript) {
                                                 const script = document.createElement("script");
                                                 script.id = "gmaps-script";
-                                                script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyC31Srrlxn7jFkf1QCoCAj-Swpb4mbJRv0&callback=initMap";
+                                                script.src = "https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap";
                                                 script.async = true;
                                                 script.defer = true;
                                                 document.head.appendChild(script);
@@ -332,5 +332,6 @@ if (!isset($_SESSION['user_id'])) {
 </body>
 
 <?php include '../css/footer.php'; ?>
+
 
 </html>
