@@ -339,7 +339,7 @@ $result = $conn->query("SELECT * FROM direccion");
     </script>
 
     <!-- Google Maps -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC31Srrlxn7jFkf1QCoCAj-Swpb4mbJRv0&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap"
         async defer></script>
 
     <script>
@@ -357,5 +357,6 @@ $result = $conn->query("SELECT * FROM direccion");
     <?php include '../css/footer.php'; ?>
 
 </body>
+
 
 </html>
