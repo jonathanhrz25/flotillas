@@ -24,7 +24,7 @@ if ($user_id == 1) {
     /* $result = $conn->query("SELECT * FROM usuarios"); */
 
     // Si no es el administrador, mostrar solo los usuarios asociados a su CEDIS
-    $cedis_usuario = $_SESSION['cedis']; // Asegúrate que 'cedis' esté disponible en la sesión
+    $cedis_usuario = $_SESSION['cedis'];
     $result = $conn->query("SELECT * FROM usuarios WHERE cedis = '$cedis_usuario'");
 }
 
@@ -276,5 +276,6 @@ if (!$result) {
     <?php include '../css/footer.php'; ?>
 
 </body>
+
 
 </html>
