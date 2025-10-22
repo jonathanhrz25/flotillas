@@ -10,43 +10,120 @@ if (!isset($_SESSION['user_id'])) {
 
 $conn = connectMysqli();
 
+// ==================================================
+//  Permisos / usuario
+// ==================================================
 $usuario_id = $_SESSION['user_id'] ?? 0;
 $usuario_rol = $_SESSION['rol'] ?? '';
 $usuario_nombre = $_SESSION['usuario'] ?? '';
+$session_cedis = $_SESSION['cedis'] ?? '';
 
-// Captura de búsqueda (si existe)
-$searchTerm = $_GET['search'] ?? ''; // El término de búsqueda desde el formulario
-
+// Construir filtro de usuario (se aplica a todas las consultas)
 if ($usuario_rol === 'TI') {
     if ($usuario_id == 1) {
+        // TI admin: ve todo
         $filtroUsuario = "1";
     } else {
-        $cedis = $conn->real_escape_string($_SESSION['cedis'] ?? '');
-        $filtroUsuario = "df.cedis = '$cedis'";
+        // TI limitado a su cedis de sesión
+        $filtroUsuario = "df.cedis = '" . $conn->real_escape_string($session_cedis) . "'";
     }
 } else {
+    // Usuarios normales por operador
     $filtroUsuario = "df.operador = '" . $conn->real_escape_string($usuario_nombre) . "'";
 }
 
-// Preparar la consulta con el filtro de búsqueda
+// ==================================================
+//  Parámetros de filtro recibidos (GET)
+// ==================================================
+$selected_cedis = $_GET['cedis'] ?? '';
+$tipo_filtro = $_GET['tipo_filtro'] ?? '';
+$valor_filtro = $_GET['valor_filtro'] ?? '';
+$searchTerm = $_GET['search'] ?? '';
+
+// Filtro cedis (si se especificó)
+$filtroCedisSQL = '';
+if (!empty($selected_cedis)) {
+    $filtroCedisSQL = " AND df.cedis = '" . $conn->real_escape_string($selected_cedis) . "'";
+}
+
+// Filtro por fecha (día o mes)
+$filtroFechaSQL = '';
+if ($tipo_filtro === 'dia' && !empty($valor_filtro)) {
+    $filtroFechaSQL = " AND DATE(v.fecha_fin) = '" . $conn->real_escape_string($valor_filtro) . "'";
+} elseif ($tipo_filtro === 'mes' && !empty($valor_filtro)) {
+    $filtroFechaSQL = " AND DATE_FORMAT(v.fecha_fin, '%Y-%m') = '" . $conn->real_escape_string($valor_filtro) . "'";
+}
+
+// ==================================================
+//  Obtener lista de CEDIS para el select (según permisos)
+// ==================================================
+$cedisOptions = [];
+if ($usuario_rol === 'TI' && $usuario_id != 1) {
+    // Mostrar sólo el cedis de sesión
+    if (!empty($session_cedis))
+        $cedisOptions[] = $session_cedis;
+} else {
+    // Obtener todos los cedis disponibles en la tabla (no eliminados)
+    $qCedis = "SELECT DISTINCT cedis FROM data_form WHERE (eliminado = 0 OR eliminado IS NULL) AND cedis IS NOT NULL AND cedis <> '' ORDER BY cedis ASC";
+    $resC = $conn->query($qCedis);
+    if ($resC) {
+        while ($r = $resC->fetch_assoc()) {
+            $cedisOptions[] = $r['cedis'];
+        }
+    }
+}
+
+// ==================================================
+//  Consulta resumen (viajes / pedidos entregados) respetando filtros y permisos
+// ==================================================
+$sqlResumen = "
+    SELECT 
+        df.cedis,
+        COUNT(DISTINCT df.viaje_id) AS total_viajes,
+        COUNT(CASE WHEN df.entregado = 'Pedido Entregado' THEN 1 END) AS pedidos_entregados
+    FROM data_form df
+    INNER JOIN viajes v ON df.viaje_id = v.id
+    WHERE $filtroUsuario
+      AND v.estado = 'cerrado'
+      AND (df.eliminado = 0 OR df.eliminado IS NULL)
+      $filtroFechaSQL
+      $filtroCedisSQL
+    GROUP BY df.cedis
+    ORDER BY df.cedis ASC
+";
+
+$resumen = $conn->query($sqlResumen);
+$resumenData = [];
+if ($resumen) {
+    while ($r = $resumen->fetch_assoc()) {
+        $resumenData[] = $r;
+    }
+}
+
+// ==================================================
+//  Consulta principal de pedidos (lista)
+//  Incluye filtros de búsqueda, fecha y cedis
+// ==================================================
 $sql = "SELECT df.*, v.estado, v.fecha_inicio, v.fecha_fin AS fecha_cierre, v.cerrado_por, u.usuario AS nombre_cierre
         FROM data_form df 
         LEFT JOIN viajes v ON df.viaje_id = v.id
         LEFT JOIN usuarios u ON v.cerrado_por = u.id
-        WHERE $filtroUsuario 
+        WHERE $filtroUsuario
           AND v.estado = 'cerrado'
-          AND DATE(v.fecha_fin) < CURDATE()";
+          AND DATE(v.fecha_fin) < CURDATE()
+          AND df.entregado = 'Pedido Entregado'
+          AND (df.eliminado = 0 OR df.eliminado IS NULL)
+          $filtroFechaSQL
+          $filtroCedisSQL";
 
-if ($searchTerm) {
-    // Agregar condición de búsqueda si existe un término
-    $searchTerm = $conn->real_escape_string($searchTerm);
-    $sql .= " AND (df.num_cliente LIKE '%$searchTerm%' OR df.cliente LIKE '%$searchTerm%' OR df.pedido LIKE '%$searchTerm%' OR df.location LIKE '%$searchTerm%')";
+if (!empty($searchTerm)) {
+    $st = $conn->real_escape_string($searchTerm);
+    $sql .= " AND (df.num_cliente LIKE '%$st%' OR df.cliente LIKE '%$st%' OR df.pedido LIKE '%$st%' OR df.location LIKE '%$st%')";
 }
 
 $sql .= " ORDER BY v.fecha_fin DESC, df.num_cliente, df.fecha DESC";
 
 $result = $conn->query($sql);
-
 if (!$result) {
     die("Error en la consulta SQL: " . $conn->error . "<br><pre>$sql</pre>");
 }
@@ -56,13 +133,10 @@ while ($row = $result->fetch_assoc()) {
     $pedidos[$row['viaje_id']][] = $row;
 }
 
-?>
-
-<?php
 // Ruta física para verificar imágenes
 $rutaFisica = $_SERVER['DOCUMENT_ROOT'] . '/flotillas/';
 
-// Función para renderizar pedidos
+// Función para renderizar un pedido
 function renderPedido($pedido, $rutaFisica)
 {
     $clasePedido = ($pedido['entregado'] === 'Pedido Entregado') ? 'pedido-entregado' :
@@ -70,7 +144,6 @@ function renderPedido($pedido, $rutaFisica)
 
     $fotoRecibido = ltrim($pedido['foto_recibido'], '/');
     $fotoCajas = ltrim($pedido['foto_cajas'], '/');
-
     ?>
     <div class="pedido <?= $clasePedido ?>">
         <div class="d-flex justify-content-between align-items-center">
@@ -108,7 +181,6 @@ function renderPedido($pedido, $rutaFisica)
     <?php
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 
@@ -138,7 +210,7 @@ function renderPedido($pedido, $rutaFisica)
         }
 
         .detalle {
-            display: block;
+            display: none;
             padding: 10px;
             background-color: #fff;
         }
@@ -154,25 +226,6 @@ function renderPedido($pedido, $rutaFisica)
             margin-right: 10px;
         }
 
-        .viaje {
-            background-color: #ddd;
-            padding: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .no-viajes {
-            text-align: center;
-            font-size: 1.5em;
-            color: #888;
-            margin-top: 20px;
-        }
-
-        .viaje-abierto {
-            background-color: #d4edda;
-            border-left: 5px solid #28a745;
-        }
-
         .viaje-cerrado {
             background-color: #f8d7da;
             border-left: 5px solid #dc3545;
@@ -181,9 +234,8 @@ function renderPedido($pedido, $rutaFisica)
         .pedido-entregado {
             background-color: #e0e0e0;
             border-radius: 8px;
-            opacity: 0.7;
+            opacity: 0.9;
             padding: 10px;
-            transition: background-color 0.3s ease;
         }
 
         .pedido-ausente {
@@ -191,7 +243,6 @@ function renderPedido($pedido, $rutaFisica)
             border-left: 5px solid #ffc107;
             border-radius: 8px;
             padding: 10px;
-            transition: background-color 0.3s ease;
         }
 
         h4.text-primary {
@@ -205,31 +256,90 @@ function renderPedido($pedido, $rutaFisica)
 <body style="padding-top: 90px;">
     <main class="main-content" id="mainContent">
         <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <a href="../menu/mapa_pedidos_cerrados.php" class="btn btn-outline-success">
+                    <i class="bi bi-map"></i> Ver mapa de pedidos cerrados
+                </a>
+            </div>
+
+            <!-- Filtros de periodo + CEDIS -->
+            <form id="filtroForm" class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label class="form-label">Filtrar por</label>
+                    <select name="tipo_filtro" id="tipo_filtro" class="form-select">
+                        <option value="">Sin filtro de fecha</option>
+                        <option value="dia" <?= ($tipo_filtro === 'dia') ? 'selected' : '' ?>>Día</option>
+                        <option value="mes" <?= ($tipo_filtro === 'mes') ? 'selected' : '' ?>>Mes</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Valor</label>
+                    <input
+                        type="<?= ($tipo_filtro === 'dia') ? 'date' : (($tipo_filtro === 'mes') ? 'month' : 'text') ?>"
+                        name="valor_filtro" id="valor_filtro" class="form-control"
+                        placeholder="Ejemplo: 2025-10-09 o 2025-10" value="<?= htmlspecialchars($valor_filtro) ?>">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">CEDIS</label>
+                    <select name="cedis" id="cedis" class="form-select">
+                        <option value="">Todos</option>
+                        <?php foreach ($cedisOptions as $c): ?>
+                            <option value="<?= htmlspecialchars($c) ?>" <?= ($selected_cedis === $c) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($c) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary me-2" type="submit"><i class="bi bi-filter"></i> Aplicar
+                        filtro</button>
+                    <button id="btnLimpiar" type="button" class="btn btn-secondary"><i class="bi bi-x-circle"></i>
+                        Limpiar</button>
+                </div>
+            </form>
+
+            <!-- Contadores (con id para actualización por AJAX) -->
+            <div id="contadores" class="row text-center mb-4">
+                <?php if (!empty($resumenData)): ?>
+                    <?php foreach ($resumenData as $dato): ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="card shadow-sm border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary fw-bold"><?= htmlspecialchars($dato['cedis']) ?></h5>
+                                    <p><strong>🚚 Viajes:</strong> <?= $dato['total_viajes'] ?></p>
+                                    <p><strong>📦 Pedidos entregados:</strong> <?= $dato['pedidos_entregados'] ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="col-12 text-muted"><em>No hay datos para el filtro seleccionado.</em></div>
+                <?php endif; ?>
+            </div>
+
             <h3 class="mb-4">Viajes Cerrados</h3>
-            <!-- Formulario de búsqueda -->
+
+            <!-- Búsqueda -->
             <form id="searchForm" class="mb-4">
                 <div class="input-group">
                     <input type="text" name="search" id="search" class="form-control"
                         placeholder="Buscar por número de cliente, pedido, nombre..."
                         value="<?= htmlspecialchars($searchTerm) ?>">
-                    <button class="btn btn-primary" type="submit">
-                        <i class="bi bi-search"></i> Buscar
-                    </button>
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Buscar</button>
                 </div>
             </form>
 
-            <div id="resultadoBusqueda" class="mb-3 text-center fw-bold"></div>
-
+            <!-- Resultados (lista de viajes/pedidos) -->
             <div id="resultContainer">
                 <?php
-                // Si no hay pedidos, mostrar el mensaje de que no hay viajes cerrados
                 if (empty($pedidos)) {
                     echo '<div class="no-viajes text-center"><p>No hay viajes cerrados por el momento.</p></div>';
                 } else {
-                    // Agrupar los pedidos por fecha de cierre
                     setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'Spanish_Spain.1252');
                     $agrupados_por_fecha = [];
-
                     foreach ($pedidos as $viaje_id => $detalles) {
                         $fecha_cierre_raw = $detalles[0]['fecha_cierre'] ?? '';
                         $fecha_cierre = $fecha_cierre_raw ? date('Y-m-d', strtotime($fecha_cierre_raw)) : 'Sin fecha';
@@ -246,16 +356,14 @@ function renderPedido($pedido, $rutaFisica)
                             $fecha_inicio = $detalles[0]['fecha_inicio'] ?? '';
                             $fecha_cierre = $detalles[0]['fecha_cierre'] ?? '';
                             $nombre_cierre = $detalles[0]['nombre_cierre'] ?? '';
-                            $operador = $detalles[0]['operador'] ?? '';
 
                             $viaje_texto = "Viaje #$viaje_id (cerrado) — " . count($detalles) . " pedidos";
                             if ($fecha_inicio)
                                 $viaje_texto .= " | Inicio: " . date('Y-m-d H:i', strtotime($fecha_inicio));
-                            if ($fecha_cierre) {
+                            if ($fecha_cierre)
                                 $viaje_texto .= " | Cierre: " . date('Y-m-d H:i', strtotime($fecha_cierre));
-                                if (!empty($nombre_cierre))
-                                    $viaje_texto .= " | Cerrado por: " . htmlspecialchars($nombre_cierre);
-                            }
+                            if (!empty($nombre_cierre))
+                                $viaje_texto .= " | Cerrado por: " . htmlspecialchars($nombre_cierre);
 
                             echo '<div class="grupo">';
                             echo '<div class="encabezado viaje-cerrado">' . $viaje_texto . '</div>';
@@ -275,39 +383,86 @@ function renderPedido($pedido, $rutaFisica)
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         $(document).ready(function () {
-            // Oculta todos los detalles al iniciar
-            $('.detalle').hide();
+            // Helper: armar filtros desde el DOM
+            function obtenerFiltrosDesdeDOM() {
+                return {
+                    tipo_filtro: $('#tipo_filtro').val() || '',
+                    valor_filtro: $('#valor_filtro').val() || '',
+                    cedis: $('#cedis').val() || '',
+                    search: $('#search').val() || ''
+                };
+            }
+
+            // Ajustar tipo de input según selección al cargar y al cambiar
+            function ajustarTipoValorInput() {
+                const tipo = $('#tipo_filtro').val();
+                const $valor = $('#valor_filtro');
+                if (tipo === 'dia') $valor.attr('type', 'date');
+                else if (tipo === 'mes') $valor.attr('type', 'month');
+                else $valor.attr('type', 'text');
+            }
+            ajustarTipoValorInput();
+            $('#tipo_filtro').on('change', ajustarTipoValorInput);
+
+            // Limpiar filtros
+            $('#btnLimpiar').on('click', function () {
+                $('#tipo_filtro').val('');
+                $('#valor_filtro').val('').attr('type', 'text');
+                $('#cedis').val('');
+                $('#search').val('');
+                cargarPedidos(obtenerFiltrosDesdeDOM());
+            });
+
+            // Función AJAX para recargar contadores y lista sin recargar toda la página
+            function cargarPedidos(filtros = {}) {
+                // Usar la misma ruta que carga el contenido desde principal.php
+                $.ajax({
+                    url: '../menu/pedidos_cerrados.php',
+                    type: 'GET',
+                    data: filtros,
+                    beforeSend: function () {
+                        $('#contadores').html('<div class="text-center p-3 text-muted">Cargando resumen...</div>');
+                        $('#resultContainer').html('<div class="text-center p-3 text-muted">Cargando resultados...</div>');
+                    },
+                    success: function (data) {
+                        // Extraer el HTML del contenedor #contadores y #resultContainer desde la respuesta completa
+                        const nuevoContadores = $(data).find('#contadores').html();
+                        const nuevosResultados = $(data).find('#resultContainer').html();
+
+                        if (typeof nuevoContadores !== 'undefined' && nuevoContadores !== null) {
+                            $('#contadores').html(nuevoContadores);
+                        }
+                        if (typeof nuevosResultados !== 'undefined' && nuevosResultados !== null) {
+                            $('#resultContainer').html(nuevosResultados);
+                        }
+
+                        // Ocultar detalles por defecto (se reinyecta nuevo HTML)
+                        $('.detalle').hide();
+                    },
+                    error: function () {
+                        $('#resultContainer').html('<div class="text-danger text-center">Error al cargar los datos.</div>');
+                    }
+                });
+            }
+
+            // Eventos
+            $('#filtroForm').on('submit', function (e) {
+                e.preventDefault();
+                cargarPedidos(obtenerFiltrosDesdeDOM());
+            });
 
             $('#searchForm').on('submit', function (e) {
                 e.preventDefault();
-                const search = $('#search').val();
-
-                $.get('../menu/pedidos_cerrados.php', { search }, function (data) {
-                    const content = $(data).find('#resultContainer').html();
-                    $('#resultContainer').html(content);
-
-                    // Mueve resultado fuera para que no se reemplace
-                    const totalCoincidencias = $(data).find('.detalle:visible').length;
-                    const resultadoTexto = $('#resultadoBusqueda');
-
-                    if (totalCoincidencias > 0) {
-                        resultadoTexto
-                            .text(`🔍 ${totalCoincidencias} pedido(s) con coincidencias encontradas.`)
-                            .removeClass('text-danger')
-                            .addClass('text-success');
-                    } else {
-                        resultadoTexto
-                            .text('❌ No se encontraron coincidencias.')
-                            .removeClass('text-success')
-                            .addClass('text-danger');
-                    }
-                });
+                cargarPedidos(obtenerFiltrosDesdeDOM());
             });
 
-            // Desplegar/cerrar manualmente
+            // Toggle de detalles
             $(document).on('click', '.encabezado', function () {
                 $(this).next('.detalle').slideToggle();
             });
+
+            // Cargar datos iniciales al abrir (opcional, ya vienen en página renderizada)
+            // cargarPedidos(obtenerFiltrosDesdeDOM());
         });
     </script>
 

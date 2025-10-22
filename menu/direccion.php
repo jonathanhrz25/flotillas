@@ -95,6 +95,22 @@ $result = $conn->query("SELECT * FROM direccion");
             max-width: 700px;
             text-align: center;
         }
+
+        #overlayCarga {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            /* fondo difuminado */
+            display: none;
+            /* oculto por defecto */
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 2000;
+        }
     </style>
 </head>
 
@@ -121,15 +137,24 @@ $result = $conn->query("SELECT * FROM direccion");
             <?php if ($_SESSION['rol'] === 'TI'): ?>
                 <div class="mb-4">
                     <h5>📂 Importar direcciones masivamente</h5>
-                    <form action="../db/importar_direccion.php" method="POST" enctype="multipart/form-data"
-                        class="d-flex gap-2">
+                    <form id="formCsv" action="../db/importar_direccion.php" method="POST" enctype="multipart/form-data"
+                        class="d-flex gap-2 align-items-center">
                         <input type="file" name="csv_file" accept=".csv" class="form-control" required>
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn btn-success" id="btnSubir">
                             <i class="bi bi-file-earmark-arrow-up"></i> Subir CSV
                         </button>
                     </form>
-                    <small class="text-muted">Formato requerido: <b>Numero de Cliente, Nombre de Cliente, Telefono,
-                            Ubicacion</b></small>
+                    <small class="text-muted">
+                        Formato requerido: <b>Numero de Cliente, Nombre de Cliente, Telefono, Ubicacion</b>
+                    </small>
+                </div>
+
+                <!-- Overlay con spinner -->
+                <div id="overlayCarga">
+                    <div class="spinner-border text-light" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="text-white mt-3 fs-5">Procesando archivo, por favor espere...</p>
                 </div>
             <?php endif; ?>
 
@@ -339,7 +364,7 @@ $result = $conn->query("SELECT * FROM direccion");
     </script>
 
     <!-- Google Maps -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDiZcKXugtBRzqpDQ0ax7Zzgt36rXEj1Lw&callback=initMap"
         async defer></script>
 
     <script>
@@ -354,9 +379,17 @@ $result = $conn->query("SELECT * FROM direccion");
         }, 3000);
     </script>
 
+    <script>
+        document.getElementById("formCsv").addEventListener("submit", function () {
+            // Mostrar overlay con spinner
+            document.getElementById("overlayCarga").style.display = "flex";
+            // Deshabilitar botón para evitar múltiples envíos
+            document.getElementById("btnSubir").disabled = true;
+        });
+    </script>
+
     <?php include '../css/footer.php'; ?>
 
 </body>
-
 
 </html>

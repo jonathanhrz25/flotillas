@@ -44,7 +44,7 @@ if ($rol === 'TI') {
 <head>
     <meta charset="UTF-8">
     <title>Ruta de Entregas</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDiZcKXugtBRzqpDQ0ax7Zzgt36rXEj1Lw&callback=initMap"
         async defer></script>
     <style>
         #map {
@@ -352,6 +352,5 @@ if ($rol === 'TI') {
     </script>
 
 </body>
-
 
 </html>

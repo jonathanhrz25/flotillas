@@ -8,11 +8,11 @@ if (!isset($_GET['pedido'])) {
 
 $pedido = $_GET['pedido'];
 
-$serverName = "00.00.00.00";
+$serverName = "192.168.1.112";
 $connectionOptions = array(
-    "Database" => "****",
-    "Uid" => "****",
-    "PWD" => "*****",
+    "Database" => "ALMACEN",
+    "Uid" => "sa",
+    "PWD" => "S3rv4*",
     "Encrypt" => false,
     "TrustServerCertificate" => true
 );
@@ -49,5 +49,4 @@ if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
     }
 } else {
     echo json_encode(['error' => 'Pedido no encontrado.']);
-
 }

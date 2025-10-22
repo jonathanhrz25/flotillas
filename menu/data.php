@@ -192,7 +192,11 @@ while ($row = $result->fetch_assoc()) {
 
                         $linea_operador = '';
                         if ($usuario_rol === 'TI' && !empty($detalles[0]['operador'])) {
-                            $linea_operador = '<div class="text-success fw-bold">Operador: ' . htmlspecialchars($detalles[0]['operador']) . '</div>';
+                            $cedis_operador = $detalles[0]['cedis'] ?? 'Cedis desconocido';
+                            $linea_operador = '<div class="text-success fw-bold">Operador: '
+                                . htmlspecialchars($detalles[0]['operador'])
+                                . ' - Cedis ' . htmlspecialchars($cedis_operador)
+                                . '</div>';
                         }
                         ?>
                         <div

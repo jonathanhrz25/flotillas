@@ -284,11 +284,10 @@ if ($pedido_id) {
     </script>
 
     <!-- Google Maps API con callback -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=APY_KEY&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDiZcKXugtBRzqpDQ0ax7Zzgt36rXEj1Lw&callback=initMap"
         async defer></script>
 </body>
 
 <?php include '../css/footer.php'; ?>
-
 
 </html>
