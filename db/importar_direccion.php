@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id'])) {
 // Función para obtener lat/lng con Google Maps
 function getCoordinates($address)
 {
-    $apiKey = "AIzaSyC31Srrlxn7jFkf1QCoCAj-Swpb4mbJRv0"; // <-- Reemplazar con tu clave
+    $apiKey = "AIzaSyDiZcKXugtBRzqpDQ0ax7Zzgt36rXEj1Lw"; // <-- Reemplazar con tu clave
     $address = urlencode($address);
     $url = "https://maps.googleapis.com/maps/api/geocode/json?address={$address}&key={$apiKey}";
 
