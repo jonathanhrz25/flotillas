@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     if (!existingScript) {
                                         const script = document.createElement("script");
                                         script.id = "gmaps-script";
-                                        script.src = "https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap";
+                                        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyDiZcKXugtBRzqpDQ0ax7Zzgt36rXEj1Lw&callback=initMap";
                                         script.async = true;
                                         script.defer = true;
                                         document.head.appendChild(script);
@@ -94,4 +94,3 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
-
